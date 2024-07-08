@@ -1,6 +1,6 @@
 dir:
-  INPUT: /content/example/data
-  OUTPUT: /content/example/output
+  INPUT: /N/project/berkeley_walking/
+  OUTPUT: /N/project/berkeley_walking/labdat-testing-KLB
   CONFIG: /content/example/cfg
   SCRIPTS: /content/example/scripts
 
@@ -9,7 +9,7 @@ settings:
   GPU_INDEX: -1
   SCOPE:
     experiment: BerkeleyOutdoorWalk
-    subject: [Subject08, Subject10]
+    subject: [2018-04-25-S08]
 
 pipeline:
 - stage: Database

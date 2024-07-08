@@ -1,5 +1,5 @@
 name: BerkeleyOutdoorWalk
-dirname: BerkeleyOutdoorWalk
+dirname: BerkeleyData
 hierarchy: [subject, run, source]
 
 trials:

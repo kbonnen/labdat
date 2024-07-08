@@ -34,21 +34,20 @@ def Main(config, stage):
         if_exists = "append"
 
     # Assume the current working directory is the workspace
-    data_path = fr'Z:\DataPipeline\rawdata'
+    data_path = config['dir']['INPUT']
     workspace_path = config['dir']['OUTPUT']
-    cfg = f'{os.getcwd()}\\labdat\\cfg'
+    # Use the 'data' key from the YAML for the raw data directory
+    rawData_path = data_path
 
     # Use the 'folder' key from the YAML for the database directory
     database_dir = os.path.join(workspace_path, stage['folder'])
     
-    # Use the 'data' key from the YAML for the raw data directory
-    rawData_path = os.path.join(workspace_path, stage['data'])
+   
 
     CWD = os.getcwd()
-
-    experiment_path = glob.glob(os.path.join(cfg, 'labdat', 'experiment', '*.yaml'))
-    source_path = glob.glob(os.path.join(cfg, 'labdat', 'source', '*.yaml'))
-
+    experiment_path = glob.glob(os.path.join(CWD, 'cfg', 'experiment', '*.yaml'))
+    source_path = glob.glob(os.path.join(CWD, 'cfg', 'source', '*.yaml'))
+   
     source = []
     for sp in source_path:
         with open(sp) as file:
@@ -67,8 +66,14 @@ def Main(config, stage):
         hierarchy = experiment['hierarchy']
 
         run_paths = numpy.array(find_folders_at_depth(exp_folder, hierarchy.index('source')+1))
+      
+        # only return paths for subjects listed in config file.
+        subject_names = config['settings']['SCOPE']['subject']
+        run_paths = numpy.array([rp for rp in run_paths if any([sn in rp for sn in subject_names])])
+        print(run_paths)
         run_info = numpy.array([rp.split(os.sep)[-len(hierarchy):] for rp in run_paths])
         run_key = numpy.array(['_'.join(ri) for ri in run_info])
+
 
         runs = numpy.hstack([run_info, run_paths[:,numpy.newaxis], run_key[:,numpy.newaxis]])
 
@@ -76,13 +81,17 @@ def Main(config, stage):
         runs = runs[good_run,:]
 
         df = pandas.DataFrame(runs, columns=hierarchy + ['path'] + ['key'])
-
+       
         db_path = os.path.join(database_dir, f"{experiment['dirname']}.db")
+        # os.makedirs(database_dir)
+
         db = sqlite3.connect(db_path)
         df.to_sql('keys', db, if_exists=if_exists)
 
         trials = []
+        print(runs)
         for run in runs:
+            
             if not run[hierarchy.index('source')] == experiment['trials']['source']:
                 continue
             if not find_subfolder_with_file(run[-2], experiment['trials']['filename']):
@@ -92,6 +101,11 @@ def Main(config, stage):
             with open(trial_path, 'rb') as file:
                 arr = msgpack.unpackb(file.read(), raw=False)
             trial_data = eval(experiment['trials']['build_function'])
+
+            if run[hierarchy.index('source')] == 'Pupil' and run[hierarchy.index('run')] == 'Binocular':
+                pupil_data = pandas.read_csv(os.path.join(run[3],'exports/002/pupil_positions.csv'))
+                pupil_data.to_sql('pupil_positions', db, if_exists=if_exists)
+
 
             for td in trial_data:
                 td['key'] = run[-1]
